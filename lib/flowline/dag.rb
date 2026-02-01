@@ -55,6 +55,18 @@ module Flowline
       true
     end
 
+    # Returns steps grouped by execution level.
+    # Steps at the same level have no dependencies on each other and can run in parallel.
+    # Level 0 contains steps with no dependencies (roots).
+    # @return [Array<Array<Step>>] Array of step arrays, one per level
+    def levels
+      validate!
+      return [] if empty?
+
+      step_levels = compute_step_levels
+      group_steps_by_level(step_levels)
+    end
+
     def to_mermaid
       lines = ['graph TD']
 
@@ -89,6 +101,20 @@ module Flowline
       return unless step
 
       step.dependencies.each(&)
+    end
+
+    def compute_step_levels
+      step_levels = {}
+      tsort.each do |name|
+        step = @steps[name]
+        step_levels[name] = step.dependencies.empty? ? 0 : step.dependencies.map { |dep| step_levels[dep] }.max + 1
+      end
+      step_levels
+    end
+
+    def group_steps_by_level(step_levels)
+      max_level = step_levels.values.max || 0
+      (0..max_level).map { |level| step_levels.select { |_, l| l == level }.keys.map { |name| @steps[name] } }
     end
 
     def validate_dependencies!

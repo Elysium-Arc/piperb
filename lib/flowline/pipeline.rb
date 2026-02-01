@@ -17,9 +17,15 @@ module Flowline
       self
     end
 
-    def run(initial_input: nil)
-      executor = @executor_class.new(dag)
-      executor.execute(initial_input: initial_input)
+    # Runs the pipeline with the specified executor.
+    #
+    # @param initial_input [Object] Input passed to root steps (steps with no dependencies)
+    # @param executor [Symbol, Class] Executor to use (:sequential, :parallel, or a class)
+    # @param max_threads [Integer, nil] Maximum concurrent threads for parallel executor
+    # @return [Flowline::Result] The execution result
+    def run(initial_input: nil, executor: :sequential, max_threads: nil)
+      executor_instance = build_executor(executor, max_threads)
+      executor_instance.execute(initial_input: initial_input)
     end
 
     def validate!
@@ -44,6 +50,25 @@ module Flowline
 
     def size
       dag.size
+    end
+
+    private
+
+    def build_executor(executor, max_threads)
+      case executor
+      when :sequential
+        Executor::Sequential.new(dag)
+      when :parallel
+        Executor::Parallel.new(dag, max_threads: max_threads)
+      when Class
+        if max_threads && executor.instance_method(:initialize).arity != 1
+          executor.new(dag, max_threads: max_threads)
+        else
+          executor.new(dag)
+        end
+      else
+        raise ArgumentError, "Unknown executor: #{executor}. Use :sequential, :parallel, or a class."
+      end
     end
   end
 end

@@ -24,6 +24,28 @@ module Flowline
       end
     end
 
+    # Retry options
+    def retries
+      options.fetch(:retries, 0)
+    end
+
+    def retry_delay
+      options.fetch(:retry_delay, 0)
+    end
+
+    def retry_backoff
+      options.fetch(:retry_backoff, nil)
+    end
+
+    def retry_if
+      options.fetch(:retry_if, nil)
+    end
+
+    # Timeout options
+    def timeout
+      options.fetch(:timeout, nil)
+    end
+
     def to_s
       "Step(#{name})"
     end

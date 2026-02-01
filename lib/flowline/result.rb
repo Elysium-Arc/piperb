@@ -3,15 +3,18 @@
 module Flowline
   # Represents the result of executing a single step.
   class StepResult
-    attr_reader :step_name, :output, :duration, :started_at, :error
+    attr_reader :step_name, :output, :duration, :started_at, :error, :retries
 
-    def initialize(step_name:, output: nil, duration: nil, started_at: nil, error: nil, status: nil)
+    def initialize(step_name:, output: nil, duration: nil, started_at: nil, error: nil, status: nil, retries: 0,
+                   timed_out: false)
       @step_name = step_name
       @output = output
       @duration = duration
       @started_at = started_at
       @error = error
       @status = status
+      @retries = retries
+      @timed_out = timed_out
     end
 
     def status
@@ -28,6 +31,10 @@ module Flowline
 
     alias failure? failed?
 
+    def timed_out?
+      @timed_out
+    end
+
     def to_h
       {
         step_name: step_name,
@@ -35,7 +42,9 @@ module Flowline
         duration: duration,
         started_at: started_at,
         error: error,
-        status: status
+        status: status,
+        retries: retries,
+        timed_out: timed_out?
       }
     end
 

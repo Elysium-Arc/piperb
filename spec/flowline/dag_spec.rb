@@ -177,6 +177,83 @@ RSpec.describe Flowline::DAG do
     end
   end
 
+  describe '#levels' do
+    it 'returns empty array for empty DAG' do
+      expect(dag.levels).to eq([])
+    end
+
+    it 'returns single level for steps with no dependencies' do
+      dag.add(make_step(:a))
+      dag.add(make_step(:b))
+      dag.add(make_step(:c))
+
+      levels = dag.levels
+      expect(levels.size).to eq(1)
+      expect(levels[0].map(&:name)).to contain_exactly(:a, :b, :c)
+    end
+
+    it 'returns correct levels for linear chain' do
+      dag.add(make_step(:a))
+      dag.add(make_step(:b, [:a]))
+      dag.add(make_step(:c, [:b]))
+
+      levels = dag.levels
+      expect(levels.size).to eq(3)
+      expect(levels[0].map(&:name)).to eq([:a])
+      expect(levels[1].map(&:name)).to eq([:b])
+      expect(levels[2].map(&:name)).to eq([:c])
+    end
+
+    it 'groups independent steps at the same level' do
+      dag.add(make_step(:a))
+      dag.add(make_step(:b, [:a]))
+      dag.add(make_step(:c, [:a]))
+      dag.add(make_step(:d, %i[b c]))
+
+      levels = dag.levels
+      expect(levels.size).to eq(3)
+      expect(levels[0].map(&:name)).to eq([:a])
+      expect(levels[1].map(&:name)).to contain_exactly(:b, :c)
+      expect(levels[2].map(&:name)).to eq([:d])
+    end
+
+    it 'handles multiple roots' do
+      dag.add(make_step(:root1))
+      dag.add(make_step(:root2))
+      dag.add(make_step(:sink, %i[root1 root2]))
+
+      levels = dag.levels
+      expect(levels.size).to eq(2)
+      expect(levels[0].map(&:name)).to contain_exactly(:root1, :root2)
+      expect(levels[1].map(&:name)).to eq([:sink])
+    end
+
+    it 'handles complex topology with multiple paths' do
+      #   a
+      #  /|\
+      # b c d
+      # |X|X|
+      # e f g
+      #  \|/
+      #   h
+      dag.add(make_step(:a))
+      dag.add(make_step(:b, [:a]))
+      dag.add(make_step(:c, [:a]))
+      dag.add(make_step(:d, [:a]))
+      dag.add(make_step(:e, %i[b c]))
+      dag.add(make_step(:f, %i[b c d]))
+      dag.add(make_step(:g, %i[c d]))
+      dag.add(make_step(:h, %i[e f g]))
+
+      levels = dag.levels
+      expect(levels.size).to eq(4)
+      expect(levels[0].map(&:name)).to eq([:a])
+      expect(levels[1].map(&:name)).to contain_exactly(:b, :c, :d)
+      expect(levels[2].map(&:name)).to contain_exactly(:e, :f, :g)
+      expect(levels[3].map(&:name)).to eq([:h])
+    end
+  end
+
   describe '#to_mermaid' do
     it 'returns mermaid diagram for empty DAG' do
       expect(dag.to_mermaid).to include('graph TD')

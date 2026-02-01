@@ -46,4 +46,16 @@ module Flowline
       super(message)
     end
   end
+
+  # Raised when a step exceeds its timeout
+  class TimeoutError < Error
+    attr_reader :step_name, :timeout_seconds
+
+    def initialize(message = nil, step_name: nil, timeout_seconds: nil)
+      @step_name = step_name
+      @timeout_seconds = timeout_seconds
+      message ||= "Step '#{step_name}' timed out after #{timeout_seconds} seconds"
+      super(message)
+    end
+  end
 end

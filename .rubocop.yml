@@ -33,7 +33,7 @@ Metrics/ClassLength:
   Max: 150
 
 Metrics/ParameterLists:
-  Max: 6
+  Max: 8
 
 Layout/LineLength:
   Max: 120
@@ -74,3 +74,5 @@ RSpec/NestedGroups:
 RSpec/DescribeClass:
   Exclude:
     - 'spec/integration/**/*'
+    - 'spec/flowline/step_retry_spec.rb'
+    - 'spec/flowline/step_timeout_spec.rb'

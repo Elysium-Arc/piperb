@@ -7,6 +7,7 @@ require_relative 'flowline/dag'
 require_relative 'flowline/result'
 require_relative 'flowline/executor/base'
 require_relative 'flowline/executor/sequential'
+require_relative 'flowline/executor/parallel'
 require_relative 'flowline/pipeline'
 
 # Flowline is a Ruby dataflow and pipeline library with declarative step
