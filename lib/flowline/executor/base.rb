@@ -143,6 +143,45 @@ module Flowline
           timed_out: timed_out
         )
       end
+
+      def build_skipped_result(step)
+        StepResult.new(
+          step_name: step.name,
+          output: nil,
+          duration: 0,
+          started_at: Time.now,
+          status: :skipped,
+          retries: 0
+        )
+      end
+
+      def should_skip_step?(step, input)
+        return false unless step.conditional?
+
+        if_cond = step.if_condition
+        unless_cond = step.unless_condition
+
+        # if: takes precedence when both are present
+        return !evaluate_condition(if_cond, input) if if_cond
+
+        return evaluate_condition(unless_cond, input) if unless_cond
+
+        false
+      end
+
+      def evaluate_condition(condition, input)
+        return true if condition.nil?
+
+        if input[:kwargs].empty?
+          if input[:args].empty?
+            condition.call
+          else
+            condition.call(*input[:args])
+          end
+        else
+          condition.call(**input[:kwargs])
+        end
+      end
     end
   end
 end

@@ -133,6 +133,48 @@ result[:slow_operation].timed_out?  # => true if step timed out
 **Timeout Options:**
 - `timeout: seconds` - Maximum execution time for the step
 
+## Conditional Execution
+
+Steps can be conditionally executed based on runtime conditions:
+
+```ruby
+pipeline = Flowline.define do
+  step :config do
+    { feature_enabled: true, skip_export: false }
+  end
+
+  # Only runs when if: condition returns truthy
+  step :feature_a, depends_on: :config, if: ->(cfg) { cfg[:feature_enabled] } do |cfg|
+    'feature A result'
+  end
+
+  # Skipped when unless: condition returns truthy
+  step :export, depends_on: :config, unless: ->(cfg) { cfg[:skip_export] } do |cfg|
+    'export result'
+  end
+
+  # Handles nil from skipped dependency
+  step :finalize, depends_on: :feature_a do |input|
+    input.nil? ? 'dependency was skipped' : "got: #{input}"
+  end
+end
+
+result = pipeline.run
+result[:feature_a].output      # => 'feature A result'
+result[:feature_a].skipped?    # => false
+result[:export].skipped?       # => false (unless was false)
+```
+
+**Conditional Behavior:**
+- `if: condition` - Runs step only when condition returns truthy
+- `unless: condition` - Skips step when condition returns truthy
+- When both `if:` and `unless:` are present, `if:` takes precedence
+- Conditions receive the same input as the step (initial input or dependency outputs)
+- Skipped steps return `nil` output with `:skipped` status
+- Dependent steps receive `nil` for skipped dependency outputs
+- Skipped steps don't count as failures (pipeline still succeeds)
+- Retries and timeouts are not applied to skipped steps
+
 ## Parallel Execution
 
 Steps at the same "level" (no inter-dependencies) run concurrently:
@@ -217,8 +259,8 @@ bundle exec rake           # Run both tests and linter
 ## Test Coverage
 
 - Line Coverage: ~98%
-- Branch Coverage: ~90%
-- 454 test examples covering:
+- Branch Coverage: ~89%
+- 516 test examples covering:
   - Unit tests for Step, DAG, Result, Pipeline, Executor (Sequential + Parallel)
   - Extended edge case tests for all components
   - Integration tests for basic pipelines and error handling
@@ -230,6 +272,7 @@ bundle exec rake           # Run both tests and linter
   - Validation edge cases (cycles, missing deps, duplicates)
   - Step retry tests (retry counts, delays, backoff strategies, conditional retries)
   - Step timeout tests (timeout enforcement, timeout with retries)
+  - Conditional execution tests (if/unless conditions, skipped steps, dependency handling)
 
 ## Dependencies
 
@@ -241,5 +284,4 @@ bundle exec rake           # Run both tests and linter
 
 Remaining features for future phases:
 - Async/concurrent executors (e.g., with Async gem)
-- Conditional step execution
 - Pipeline composition

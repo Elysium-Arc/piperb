@@ -31,6 +31,10 @@ module Flowline
 
     alias failure? failed?
 
+    def skipped?
+      status == :skipped
+    end
+
     def timed_out?
       @timed_out
     end
@@ -44,7 +48,8 @@ module Flowline
         error: error,
         status: status,
         retries: retries,
-        timed_out: timed_out?
+        timed_out: timed_out?,
+        skipped: skipped?
       }
     end
 
@@ -69,7 +74,7 @@ module Flowline
     end
 
     def success?
-      error.nil? && step_results.values.all?(&:success?)
+      error.nil? && step_results.values.none?(&:failed?)
     end
 
     def failed?

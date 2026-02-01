@@ -226,9 +226,10 @@ RSpec.describe Flowline::Result do
     end
 
     it 'shows duration when available' do
+      start_time = Time.new(2024, 1, 1, 12, 0, 0)
       result = described_class.new(
-        started_at: Time.now,
-        finished_at: Time.now + 1.2345
+        started_at: start_time,
+        finished_at: start_time + 1.2345
       )
 
       expect(result.inspect).to include('duration=1.2345')

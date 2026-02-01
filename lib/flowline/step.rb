@@ -46,6 +46,19 @@ module Flowline
       options.fetch(:timeout, nil)
     end
 
+    # Conditional execution options
+    def if_condition
+      options.fetch(:if, nil)
+    end
+
+    def unless_condition
+      options.fetch(:unless, nil)
+    end
+
+    def conditional?
+      !if_condition.nil? || !unless_condition.nil?
+    end
+
     def to_s
       "Step(#{name})"
     end

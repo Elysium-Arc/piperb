@@ -103,6 +103,9 @@ module Flowline
 
       def execute_step(step, context)
         input = context.mutex.synchronize { build_step_input(step, context.outputs, context.initial_input) }
+
+        return build_skipped_result(step) if should_skip_step?(step, input)
+
         execute_step_with_retry(step, input)
       end
     end
