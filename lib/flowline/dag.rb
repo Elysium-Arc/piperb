@@ -1,0 +1,163 @@
+# frozen_string_literal: true
+
+require "tsort"
+
+module Flowline
+  # Directed Acyclic Graph implementation using Ruby's TSort.
+  # Manages step dependencies and provides topological sorting.
+  class DAG
+    include TSort
+
+    def initialize
+      @steps = {}
+    end
+
+    def add(step)
+      raise DuplicateStepError.new(
+        "Step '#{step.name}' already exists",
+        step_name: step.name
+      ) if @steps.key?(step.name)
+
+      @steps[step.name] = step
+      self
+    end
+
+    def [](name)
+      @steps[name.to_sym]
+    end
+
+    def steps
+      @steps.values
+    end
+
+    def step_names
+      @steps.keys
+    end
+
+    def empty?
+      @steps.empty?
+    end
+
+    def size
+      @steps.size
+    end
+
+    def sorted_steps
+      validate!
+      tsort.map { |name| @steps[name] }
+    end
+
+    def validate!
+      validate_dependencies!
+      validate_no_cycles!
+      true
+    end
+
+    def to_mermaid
+      lines = ["graph TD"]
+
+      if empty?
+        lines << "  empty[Empty Pipeline]"
+        return lines.join("\n")
+      end
+
+      sorted_steps.each do |step|
+        if step.dependencies.empty?
+          lines << "  #{step.name}"
+        else
+          step.dependencies.each do |dep|
+            lines << "  #{dep} --> #{step.name}"
+          end
+        end
+      end
+
+      lines.join("\n")
+    end
+
+    private
+
+    # TSort interface: iterate over all nodes
+    def tsort_each_node(&block)
+      @steps.each_key(&block)
+    end
+
+    # TSort interface: iterate over dependencies of a node
+    def tsort_each_child(node, &block)
+      step = @steps[node]
+      return unless step
+
+      step.dependencies.each(&block)
+    end
+
+    def validate_dependencies!
+      @steps.each_value do |step|
+        step.dependencies.each do |dep|
+          unless @steps.key?(dep)
+            raise MissingDependencyError.new(
+              "Step '#{step.name}' depends on '#{dep}' which does not exist",
+              step_name: step.name,
+              missing_dependency: dep
+            )
+          end
+        end
+      end
+    end
+
+    def validate_no_cycles!
+      tsort
+    rescue TSort::Cyclic => e
+      # Extract cycle information from the error message
+      cycle = extract_cycle_from_error(e)
+      raise CycleError.new(
+        "Circular dependency detected: #{cycle.join(' -> ')}",
+        cycle: cycle
+      )
+    end
+
+    def extract_cycle_from_error(error)
+      # TSort::Cyclic message format: "topological sort failed: ... (TSort::Cyclic)"
+      # Try to detect the cycle by finding strongly connected components
+      detect_cycle
+    end
+
+    def detect_cycle
+      # Simple DFS-based cycle detection
+      visited = {}
+      rec_stack = {}
+      cycle = []
+
+      @steps.each_key do |name|
+        if detect_cycle_dfs(name, visited, rec_stack, cycle)
+          return cycle.reverse
+        end
+      end
+
+      []
+    end
+
+    def detect_cycle_dfs(node, visited, rec_stack, cycle)
+      visited[node] = true
+      rec_stack[node] = true
+
+      step = @steps[node]
+      return false unless step
+
+      step.dependencies.each do |dep|
+        if !visited[dep]
+          cycle << node
+          if detect_cycle_dfs(dep, visited, rec_stack, cycle)
+            return true
+          end
+          cycle.pop
+        elsif rec_stack[dep]
+          cycle << node
+          cycle << dep
+          return true
+        end
+      end
+
+      rec_stack[node] = false
+      false
+    end
+  end
+end
